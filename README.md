@@ -1,10 +1,25 @@
 Este é um pipeline de demonstração usando o docker
 ## Executar
 
+antes de executar execute a instalação do docker
+
+ curl -fsSL https://get.docker.com | sh;
+
+ adicione o seu usuario ao grupo docker e faça logout login para usar o docker sem sudo ou use todos os comandos do docker com sudo
+
+ sudo usermod -aG docker $USER
+
+`` `
+$ docker-compose up -d zalenium 
+`` `
+## aguardar terminar a instalação 
+
+O zalenium demora um pouco para terminar a instalação acompanhe com 
+docker logs -f zalenium
 
 
 `` `
-$ docker-compose up
+$ docker-compose up -d
 `` `
 
 ## O que esse pipeline contém?
@@ -28,11 +43,6 @@ A maneira preferida de construir pipelines no Jenkins 2.x é usar o `pipeline-pl
 
 Scripts de pipeline também podem ser recuperados do seu repositório git. Usar um `Jenkinsfile` em sua raiz git com a descrição do pipeline permite um pipeline multibranch.
 
-### Troublehoot 
-
-O zalenium demora um pouco para terminar a instalação acompanhe com 
-
-docker logs -f zalenium
 
 
 ### acessar o jenkins

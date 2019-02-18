@@ -107,7 +107,7 @@ node
                   
 
                 
-                sh "sudo docker run -d --name petclinic -p 9966:8080 --network petclinic-demo-pipeline_prodnetwork claudm/petclinic:\\\$(git rev-parse HEAD)"
+                sh "sudo docker run -d --name petclinic -p 9966:8080 --network devops_prodnetwork claudm/petclinic:\\\$(git rev-parse HEAD)"
                 sh "\${mvnHome}/bin/mvn verify -Dgrid.server.url=http://zalenium:4444/wd/hub/"
                 
                 step_time("PUT",Uuid,"UI test on docker instance",VERSION,"claudemir","stop")
