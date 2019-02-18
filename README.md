@@ -78,6 +78,3 @@ http://localhost/api/steps?format=excel
 http://localhost/api/steps?format=export
 
 
-### removendo tudo
-
-docker ps -qa | xargs docker rm -f
