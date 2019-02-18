@@ -1,0 +1,113 @@
+version: '2'
+
+networks:
+  demopipeline_prodnetwork:
+    driver: bridge
+
+networks:
+  prodnetwork:
+    driver: bridge
+
+services:
+ registry:
+  image: registry
+  ports:
+    - 5000:5000
+  networks:
+    - prodnetwork
+    
+ nexus:
+  image: sonatype/nexus
+  ports:
+    - 8081:8081
+  networks:
+    - prodnetwork
+
+ jenkins:
+  build: ./jenkins
+  ports:
+    - 8080:8080
+  networks:
+    - prodnetwork
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - /usr/bin/docker:/usr/bin/docker
+  depends_on:
+    - nexus
+    - sonar
+    - zalenium
+  environment:
+    - NEXUS_PORT=8081
+    - SONAR_PORT=9000
+    - SONAR_DB_PORT=5432
+
+ sonar:
+  image: sonarqube
+  ports:
+   - 9092:9092
+   - 9000:9000
+  networks:
+    - prodnetwork
+  depends_on:
+    - sonardb
+  environment:
+   - SONARQUBE_JDBC_URL=jdbc:postgresql://sonardb:5432/sonar
+   - SONARQUBE_JDBC_USERNAME=sonar
+   - SONARQUBE_JDBC_PASSWORD=sonar
+
+ sonardb:
+  image: postgres
+  networks:
+    - prodnetwork
+  environment:
+   - POSTGRES_USER=sonar
+   - POSTGRES_PASSWORD=sonar
+     
+ zalenium:
+  image: "dosel/zalenium"
+  container_name: zalenium
+  hostname: zalenium
+  networks:
+    - prodnetwork
+
+  tty: true
+  volumes:
+    - /tmp/videos:/home/seluser/videos
+    - /var/run/docker.sock:/var/run/docker.sock
+    - /usr/bin/docker:/usr/bin/docker
+  ports:
+    - 4444:4444
+  command: > 
+          start --desiredContainers 2
+          --maxDockerSeleniumContainers 8
+          --screenWidth 800 --screenHeight 600
+          --timeZone "America/Sao_Paulo"
+          --videoRecordingEnabled true
+          --sauceLabsEnabled false
+          --browserStackEnabled false
+          --testingBotEnabled false
+          --startTunnel false
+  environment:
+    - HOST_UID
+    - HOST_GID
+    - SAUCE_USERNAME
+    - SAUCE_ACCESS_KEY
+    - BROWSER_STACK_USER
+    - BROWSER_STACK_KEY
+    - TESTINGBOT_KEY
+    - TESTINGBOT_SECRET
+    - GRID_BROWSER_TIMEOUT=60
+    - GRID_TIMEOUT=60
+    - PULL_SELENIUM_IMAGE=true 
+    - SE_OPTS=-browserTimeout 60 -timeout 60
+    - zalenium_no_proxy=172.23.0.*, 10.0.0.0/8, *.local, 169.254/16, 192.168.99.*, localhost, 127.0.0.1
+
+ api_devops:
+  build: ./api/
+  image: api_devops:1.0.0
+  container_name: api_devops
+  ports:
+    - "80:80"
+  networks:
+    - prodnetwork
+
