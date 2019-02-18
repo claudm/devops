@@ -16,7 +16,7 @@ $ docker-compose up -d zalenium
 
 O zalenium demora um pouco para terminar a instalação acompanhe com
 
-`` `docker logs -f zalenium`` `
+`` `$ docker logs -f zalenium`` `
 
 
 `` `
