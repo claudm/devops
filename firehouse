@@ -1,0 +1,68 @@
+Resources:
+  MyKinesisStream:
+    Type: "AWS::Kinesis::Stream"
+    Properties:
+      ShardCount: 1
+      Name: "MyKinesisDataStream"
+
+  MyS3Bucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: "my-kinesis-firehose-s3-bucket"
+
+  MyFirehoseDeliveryStream:
+    Type: "AWS::KinesisFirehose::DeliveryStream"
+    Properties:
+      DeliveryStreamName: "MyFirehoseToS3"
+      S3DestinationConfiguration:
+        BucketARN: !GetAtt [MyS3Bucket, Arn]
+        RoleARN: !GetAtt [FirehoseDeliveryRole, Arn]
+      KinesisStreamSourceConfiguration:
+        KinesisStreamARN: !GetAtt [MyKinesisStream, Arn]
+        RoleARN: !GetAtt [FirehoseSourceRole, Arn]
+
+  FirehoseDeliveryRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: firehose.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: "FirehoseDeliveryToS3"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:aws:s3:::${MyS3Bucket}/*"
+
+  FirehoseSourceRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: firehose.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: "FirehoseSourceFromKinesis"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kinesis:GetShardIterator
+                  - kinesis:GetRecords
+                  - kinesis:DescribeStream
+                  - kinesis:ListStreams
+                Resource:
+                  - !Sub "${MyKinesisStream.Arn}"
