@@ -50,8 +50,7 @@ kafka_servers = 'your.kafka.bootstrap.servers'
 topic_name = "your_topic_name"
 
 combined_df.selectExpr("to_avro(struct(*)) AS value") \
-     .write \
-     .format("kafka") \
+     .write.format("kafka") \
      .option("kafka.bootstrap.servers", kafka_servers) \
      .option("topic", topic_name) \
      .option("kafka.security.protocol", "SSL") \
@@ -110,8 +109,7 @@ kafka_servers = 'your.kafka.bootstrap.servers'
 topic_name = "your_topic_name"
 
 combined_df.selectExpr("CAST(value AS STRING)") \
-     .write \
-     .format("kafka") \
+     .write.format("kafka") \
      .option("kafka.bootstrap.servers", kafka_servers) \
      .option("topic", topic_name) \
      .option("kafka.security.protocol", "SSL") \
@@ -144,8 +142,7 @@ kafka_servers = 'your.kafka.bootstrap.servers'
 topic_name = "your_topic_name"
 
 combined_df.selectExpr("to_avro(struct(*)) AS value") \
-     .write \
-     .format("kafka") \
+     .write.format("kafka") \
      .option("kafka.bootstrap.servers", kafka_servers) \
      .option("topic", topic_name) \
      .option("kafka.security.protocol", "SSL") \
@@ -177,8 +174,7 @@ kafka_servers = 'your.kafka.bootstrap.servers'
 topic_name = "your_topic_name"
 
 combined_df.selectExpr("CAST(value AS STRING)") \
-     .write \
-     .format("kafka") \
+     .write.format("kafka") \
      .option("kafka.bootstrap.servers", kafka_servers) \
      .option("topic", topic_name) \
      .option("kafka.security.protocol", "SSL") \
