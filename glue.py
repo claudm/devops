@@ -1,60 +1,104 @@
-If you want to automatically scan and retrieve paths from an S3 bucket and then process each of them, you can utilize the AWS SDK (boto3) to list the objects. However, as AWS Glue's PySpark environment doesn't natively support boto3, you'll need to use a combination of Glue's native functions and PySpark.
 
-Here's an approach:
+# Sending Data from S3 to Kafka using AWS Glue and Spark
 
-Setup the Necessary Libraries and Context:
-python
-Copy code
-from pyspark.context import SparkContext
-from awsglue.context import GlueContext
+## Version 1: Sending Avro Data
+
+### Overview:
+This solution provides a method to read Avro files from multiple S3 paths into a Spark DataFrame and then send each object from these files as a separate message to a Kafka topic in Avro format.
+
+### Steps:
+
+1. **Setup Spark Session**: 
+Initialize a Spark session which is the entry point to any Spark functionality.
+
+```python
 from pyspark.sql import SparkSession
-from awsglue.utils import getResolvedOptions
+spark = SparkSession.builder.appName("GlueKafkaAvroIntegration").getOrCreate()
+```
 
-sc = SparkContext()
-glueContext = GlueContext(sc)
-spark = glueContext.spark_session
-Define Function to Derive Kafka Topic from S3 Path:
-python
-Copy code
-def derive_topic_from_s3_path(s3_path):
-    filename = s3_path.split('/')[-1]
-    topic_name = filename.split('.')[0]
-    return topic_name
-Use GlueContext to Get S3 Paths:
-Here, we're making use of the create_dynamic_frame.from_catalog method, which allows us to read data directly from S3 without specifying paths. The assumption is that you've set up a crawler that has cataloged your S3 data.
-python
-Copy code
-database_name = "your_database_name"
-table_name = "your_table_name"
-dynamic_frame = glueContext.create_dynamic_frame.from_catalog(database=database_name, table_name=table_name)
-s3_paths = [record['input_file_name'] for record in dynamic_frame.rdd.collect()]
-Loop Through Each S3 Path, Read Files, and Produce Messages to Kafka:
-python
-Copy code
+2. **Specify S3 Paths**:
+List down the S3 paths where your Avro files reside.
+
+```python
+s3_paths = [
+    "s3://your-bucket/path1/",
+    "s3://your-bucket/path2/",
+    # ... add more paths as needed
+]
+```
+
+3. **Read Avro files into a DataFrame**: 
+Utilize Spark's `read.format("avro")` method to read the content of the S3 paths into a DataFrame.
+
+```python
+dfs = [spark.read.format("avro").load(path) for path in s3_paths]
+```
+
+4. **Combine Multiple DataFrames**: 
+Combine the DataFrames from each path into one.
+
+```python
+from functools import reduce
+combined_df = reduce(lambda a, b: a.union(b), dfs)
+```
+
+5. **Write DataFrame to Kafka in Avro Format**: 
+Convert each row of the DataFrame to Avro format and send to the specified Kafka topic.
+
+```python
 kafka_servers = 'your.kafka.bootstrap.servers'
+topic_name = "your_topic_name"
 
-for s3_path in s3_paths:
-    # Read files from the current S3 path
-    data = spark.read.text(s3_path)
-    
-    # Derive Kafka topic from the S3 path
-    topic_name = derive_topic_from_s3_path(s3_path)
+combined_df.selectExpr("to_avro(struct(*)) AS value")     .write     .format("kafka")     .option("kafka.bootstrap.servers", kafka_servers)     .option("topic", topic_name)     .option("kafka.security.protocol", "SSL")     .option("kafka.ssl.key.location", "/path/to/service.key")     .option("kafka.ssl.certificate.location", "/path/to/service.cert")     .option("kafka.ssl.truststore.location", "/path/to/ca.pem")     .save()
+```
 
-    # Produce messages to the Kafka topic
-    data.selectExpr("value as value") \
-        .write \
-        .format("kafka") \
-        .option("kafka.bootstrap.servers", kafka_servers) \
-        .option("topic", topic_name) \
-        .option("kafka.security.protocol", "SSL") \
-        .option("kafka.ssl.key.location", "/path/to/service.key") \
-        .option("kafka.ssl.certificate.location", "/path/to/service.cert") \
-        .option("kafka.ssl.truststore.location", "/path/to/ca.pem") \
-        .save()
-This approach assumes:
+## Version 2: Sending JSON Data
 
-You've set up an AWS Glue Crawler that has cataloged your S3 data into a database and table.
-Each S3 path corresponds to a different Kafka topic.
-The necessary Kafka-related configurations have been set up in your Glue job's Spark environment, including adding any required JAR files.
-The necessary certificate files are accessible to the Glue job.
-Replace placeholder paths, database names, table names, and other values with your actual data. Adjust the script based on your specific requirements.
+### Overview:
+This solution provides a method to read JSON files from multiple S3 paths into a Spark DataFrame and then send each JSON object (or line) from these files as a separate message to a Kafka topic.
+
+### Steps:
+
+1. **Setup Spark Session**: 
+Initialize a Spark session which is the entry point to any Spark functionality.
+
+```python
+from pyspark.sql import SparkSession
+spark = SparkSession.builder.appName("GlueKafkaJSONIntegration").getOrCreate()
+```
+
+2. **Specify S3 Paths**:
+List down the S3 paths where your JSON files reside.
+
+```python
+s3_paths = [
+    "s3://your-bucket/path1/",
+    "s3://your-bucket/path2/",
+    # ... add more paths as needed
+]
+```
+
+3. **Read JSON files into a DataFrame**: 
+Utilize Spark's `read.json` method to read the content of the S3 paths into a DataFrame.
+
+```python
+dfs = [spark.read.json(path) for path in s3_paths]
+```
+
+4. **Combine Multiple DataFrames**: 
+Combine the DataFrames from each path into one.
+
+```python
+from functools import reduce
+combined_df = reduce(lambda a, b: a.union(b), dfs)
+```
+
+5. **Write DataFrame to Kafka**: 
+Each row of the DataFrame (which corresponds to a JSON object) is sent as a separate message to the specified Kafka topic.
+
+```python
+kafka_servers = 'your.kafka.bootstrap.servers'
+topic_name = "your_topic_name"
+
+combined_df.selectExpr("CAST(value AS STRING)")     .write     .format("kafka")     .option("kafka.bootstrap.servers", kafka_servers)     .option("topic", topic_name)     .option("kafka.security.protocol", "SSL")     .option("kafka.ssl.key.location", "/path/to/service.key")     .option("kafka.ssl.certificate.location", "/path/to/service.cert")     .option("kafka.ssl.truststore.location", "/path/to/ca.pem")     .save()
+```
