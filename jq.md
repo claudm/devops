@@ -2,7 +2,7 @@
 
 Vamos analisar este comando:
 
-kubectl get deployment -o json | jq -r '.items[] | .metadata.labels | to_entries | map(.key + "_" + .value) | join("-") as $filename | . as $deployment | $filename, $deployment | @sh "echo \(.[$filename]) > \(.[$deployment] | tojson)" | xargs -I{} bash -c {}
+kubectl get deployment -o json | jq -r '.items[] | .metadata.labels | to_entries | map(.key + "_" + .value) | join("-") as $filename | . as $deployment | $filename, $deployment | @sh "echo \(.[$filename] | tojson) > \(.[$filename])"'
 - **kubectl get deployment -o json**: Esta parte do comando obtém os dados em formato JSON dos deployments usando o `kubectl`.
 
 - **jq -r '.items[] | .metadata.labels | to_entries | map(.key + "_" + .value) | join("-") as $filename | . as $deployment | $filename, $deployment | @sh "echo \(.[$filename]) > \(.[$deployment] | tojson)"  | xargs -I{} bash -c {}'**: Este comando `jq` processa os dados JSON da seguinte forma:
