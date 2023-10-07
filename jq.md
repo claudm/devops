@@ -1,0 +1,1 @@
+kubectl get deployment -o json | jq -r '.items[] | .metadata.labels | to_entries | map(.key + "_" + .value) | join("-") as $filename | . as $deployment | $filename, $deployment | @sh "echo \(.[$filename]) > \(.[$deployment] | tojson)" | xargs -I{} bash -c {}
