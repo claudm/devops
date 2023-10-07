@@ -2,11 +2,7 @@
 
 Vamos analisar este comando:
 
-kubectl get deployment -o json | jq -r '.items[] | {metadata: .metadata, spec: .spec, status: .status} | @json' | \
-while IFS= read -r line; do
-  filename=$(echo "$line" | jq -r '.metadata.labels | to_entries | map("\(.key)_\(.value)") | join("-")')
-  echo "$line" > "$filename.json"
-done
+(\u0027)
 
 kubectl get deployment -o json | jq -r '.items[] | .metadata.labels | to_entries | .[] | "\(.key)_\(.value)" as $filename | {filename: $filename, deployment: .} | @sh "echo \(.deployment | tojson) > \(.filename)" | xargs -I{} bash -c {}
 
