@@ -1,3 +1,30 @@
+import pyjks
+from cryptography.hazmat.backends import default_backend
+from cryptography import x509
+
+def create_truststore_from_certs(cert_paths, truststore_path, truststore_password):
+    trusted_certs = []
+
+    for cert_path in cert_paths:
+        # Load the CA certificate
+        with open(cert_path, "rb") as cert_file:
+            cert_data = cert_file.read()
+            cert = x509.load_pem_x509_certificate(cert_data, default_backend())
+
+        # Convert the certificate to DER format which pyjks understands
+        cert_der = cert.public_bytes(serialization.Encoding.DER)
+        alias = cert.subject.rfc4514_string()  # Use the certificate's subject as alias
+        trusted_certs.append(pyjks.TrustedCert(alias, None, cert_der))
+
+    # Create a new JKS truststore and add the CA certificates
+    truststore = pyjks.KeyStore.new('jks', trusted_certs)
+
+    # Save the new JKS truststore
+    with open(truststore_path, "wb") as truststore_file:
+        truststore.save(truststore_file, truststore_password)
+
+# Usage
+create_truststore_from_certs(["path_to_ca-cert.crt", "path_to_caroot.crt"], "truststore.jks", "your_truststore_password")
 
 # Sending Data from S3 to Kafka using AWS Glue and Spark
 
