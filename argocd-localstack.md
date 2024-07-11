@@ -27,6 +27,8 @@ We will be using Argo CD to manage all other software components from now on, bu
 ✅ **Oh, the repo!**
 
 We almost forgot to configure our git repo into Argo CD. Assuming you’re utilizing a private repository for your tests, you can follow the instructions in the UI as outlined [here](https://argo-cd.readthedocs.io/en/stable/user-guide/private-repositories/). However, for this article, I’ll be using my public repository:
+
+```
 	cat <<EOF | kubectl apply -f -
     apiVersion: v1
     kind: Secret
@@ -38,8 +40,13 @@ We almost forgot to configure our git repo into Argo CD. Assuming you’re utili
     stringData:
       type: git
       url: https://github.com/leunamnauj/Crossplane-Argocd-and-localstack-for-local-environments.git
+EOF
+
+```
 
 Once your repo is defined, you need to set up an Application to manage all the other applications that will be discovered from the repo (App of Apps).
+
+```
 	cat <<EOF | kubectl apply -f -
     apiVersion: argoproj.io/v1alpha1
     kind: Application
@@ -68,7 +75,10 @@ Once your repo is defined, you need to set up an Application to manage all the o
         syncOptions:
         - CreateNamespace=true
       revisionHistoryLimit: 10
-	EOF
+EOF
+
+```
+
 ## **Well, Crossplane or what?**
 
 Now that we have our cluster up and running with Argo CD in place, we can deploy Localstack and Crossplane using Argo CD.
@@ -88,6 +98,8 @@ In the public repo, you can find a couple of Applications, which are organized t
 **Localstack and Crossplane**
 
 Pretty simple here, we’re just deploying the official helm chart for both tools
+
+```
 	cat <<EOF | kubectl apply -f -
     apiVersion: argoproj.io/v1alpha1
     kind: Application
@@ -119,7 +131,12 @@ Pretty simple here, we’re just deploying the official helm chart for both tool
         syncOptions:
         - CreateNamespace=true
       revisionHistoryLimit: 10
+EOF
 
+```
+
+```
+	cat <<EOF | kubectl apply -f -
     apiVersion: argoproj.io/v1alpha1
     kind: Application
     metadata:
@@ -150,12 +167,17 @@ Pretty simple here, we’re just deploying the official helm chart for both tool
         syncOptions:
         - CreateNamespace=true
       revisionHistoryLimit: 10
-	EOF
+EOF
+
+```
+
 **crossplane-providers**
 
 Here’s something a bit different: we’re deploying [Crossplane Providers](https://docs.crossplane.io/latest/concepts/providers/) from manifests placed in a specific path. Our focus is on playing with Crossplane and AWS (through Localstack), so for now, we’re only installing the A[WS provider](https://marketplace.upbound.io/providers/upbound/provider-aws/v0.46.0). However, you can add anything else you need later on.
 
 Keep in mind that the provider deployment can take a while, depending on your local setup, it will deploy a lot of CRDs.
+
+```
 	cat <<EOF | kubectl apply -f -
     apiVersion: argoproj.io/v1alpha1
     kind: Application
@@ -187,7 +209,10 @@ Keep in mind that the provider deployment can take a while, depending on your lo
         syncOptions:
         - CreateNamespace=true
       revisionHistoryLimit: 10
-	EOF
+
+EOF
+```
+
 ℹ️ Note that Crossplane Providers are installed in a second stage after getting ***crossplane*** Application up and running.
 
 ## **The glue**
@@ -195,6 +220,8 @@ Keep in mind that the provider deployment can take a while, depending on your lo
 By now, we have Localstack, Crossplane, and its AWS provider running. The next step is to stitch both together, providing us with the experience of interacting directly with AWS.
 
 We have this simple secret that contains a dummy set of credentials
+
+```
 	cat <<EOF | kubectl apply -f -
     apiVersion: v1
     kind: Secret
@@ -231,7 +258,9 @@ And a [ProviderConfig](https://docs.crossplane.io/latest/concepts/providers/#con
         url:
           type: Static
           static: http://localstack.localstack.svc.cluster.local:4566
-	EOF
+EOF
+```
+
 As you can see here, it grabs credentials from the previously defined Secret, and in the endpoint section, it points to our Localstack service.
 
 ## **Getting everything in motion!**
