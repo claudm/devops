@@ -250,6 +250,7 @@ Temos este secrets simples que contém um conjunto fictício de credenciais
       creds: W2RlZmF1bHRdCmF3c19hY2Nlc3Nfa2V5X2lkID0gdGVzdAphd3Nfc2VjcmV0X2FjY2Vzc19rZXkgPSB0ZXN0Cg==
 EOF
 ```
+```
 cat <<EOF | kubectl apply -f -
 apiVersion: aws.upbound.io/v1beta1
 kind: ProviderConfig
@@ -263,7 +264,7 @@ spec:
       name: aws-secret
       key: creds
 EOF
-
+```
 
 And a [ProviderConfig](https://docs.crossplane.io/latest/concepts/providers/#configure-a-provider)
 
