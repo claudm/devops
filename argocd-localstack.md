@@ -135,6 +135,7 @@ EOF
 
 ```
 
+
 ```
 	cat <<EOF | kubectl apply -f -
     apiVersion: argoproj.io/v1alpha1
