@@ -1,32 +1,32 @@
 
-## Crossplane, Argo CD, and Localstack for local testing
+## Crossplane, Argo CD e Localstack para testes locais
 
 ![](https://cdn-images-1.medium.com/max/2048/0*Qpew1MeYDHgwGi4F)
 
-In this article, we are going to explore how we can combine three powerful tools: [Crossplane](https://www.crossplane.io/), [Argo CD](https://argo-cd.readthedocs.io/), and [Localstack](https://www.localstack.cloud/), to create a simple, visually tangible, and cost-effective setup for learning and practicing. The aim of this document is not to provide an in-depth exploration of the technologies used here; instead, it focuses on the interaction among them and the synergy they create.
+Neste artigo, vamos explorar como podemos combinar três ferramentas poderosas: [Crossplane](https://www.crossplane.io/), [Argo CD](https://argo-cd.readthedocs.io/), e [Localstack](https://www.localstack.cloud/), ara criar uma configuração simples, visualmente tangível e econômica para aprender e praticar. O objetivo deste documento não é fornecer uma exploração aprofundada das tecnologias usadas aqui; em vez disso, ele se concentra na interação entre elas e na sinergia que elas criam.
 
 ![](https://cdn-images-1.medium.com/max/2000/1*sRcPnjbqMyToL-PrPK2Ulw.png)
 
-## First of all, let's get our setup in place.
+## Primeiro, vamos preparar nossa configuração.
 
-✅ **A Git repo**
+✅ **Um repositório Git**
 
-There’s not much to say here, just grab an empty repository to play with. We’ll be using it to store all our manifests.
+Não há muito o que dizer aqui, apenas pegue um repositório vazio para brincar. Nós o usaremos para armazenar todos os nossos manifestos.
 
 ✅ **Kubernetes**
 
-As Minikube is one of the most extensively used tools for local clusters, let’s use it. If you’re not familiar with the installation process, you can find it [here](https://minikube.sigs.k8s.io/docs/start/)
+Como o rancher é uma das ferramentas mais amplamente utilizadas para clusters locais, vamos usá-lo. Se você não estiver familiarizado com o processo de instalação, você pode encontrá-lo [aqui](https://www.youtube.com/watch?v=suz9No_FHSo)
 
 ✅ **Argo CD**
 
-We will be using Argo CD to manage all other software components from now on, but before that, we need to install it. The documentation is excellent, a vanilla [installation](https://argo-cd.readthedocs.io/en/stable/getting_started/#1-install-argo-cd) is pretty simple and is more than enough for our current project. Just make sure to skip the core version, we need the UI.
+Usaremos o Argo CD para gerenciar todos os outros componentes de software de agora em diante, mas antes disso, precisamos instalá-lo. A documentação é excelente, uma  [instalação](https://argo-cd.readthedocs.io/en/stable/getting_started/#1-install-argo-cd) vanilla é bem simples e é mais do que suficiente para nosso projeto atual. Apenas certifique-se de pular a versão principal, precisamos da UI.
 
     kubectl create namespace argocd
     kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-✅ **Oh, the repo!**
+✅ **Ah, o repositório!**
 
-We almost forgot to configure our git repo into Argo CD. Assuming you’re utilizing a private repository for your tests, you can follow the instructions in the UI as outlined [here](https://argo-cd.readthedocs.io/en/stable/user-guide/private-repositories/). However, for this article, I’ll be using my public repository:
+Quase esquecemos de configurar nosso repositório git no Argo CD. Supondo que você esteja utilizando um repositório privado para seus testes, você pode seguir as instruções na UI conforme descrito  [aqui](https://argo-cd.readthedocs.io/en/stable/user-guide/private-repositories/). No entanto, para este artigo, usarei meu repositório público:
 
 ```
 	cat <<EOF | kubectl apply -f -
@@ -44,7 +44,7 @@ EOF
 
 ```
 
-Once your repo is defined, you need to set up an Application to manage all the other applications that will be discovered from the repo (App of Apps).
+Depois que seu repositório estiver definido, você precisará configurar um aplicativo para gerenciar todos os outros aplicativos que serão descobertos no repositório (App of Apps)..
 
 ```
 	cat <<EOF | kubectl apply -f -
@@ -79,11 +79,11 @@ EOF
 
 ```
 
-## **Well, Crossplane or what?**
+## **Bem, Crossplane ou o quê?**
 
-Now that we have our cluster up and running with Argo CD in place, we can deploy Localstack and Crossplane using Argo CD.
+Agora que nosso cluster está instalado e funcionando com o Argo CD, podemos implantar o Localstack e o Crossplane usando o Argo CD.
 
-In the public repo, you can find a couple of Applications, which are organized this way for the sake of the article. However, you can group them more simply if you prefer.
+No repositório público, você pode encontrar alguns Applications, que são organizados dessa forma para o bem do artigo. No entanto, você pode agrupá-los de forma mais simples, se preferir..
 
 * localstack
 
@@ -93,11 +93,11 @@ In the public repo, you can find a couple of Applications, which are organized t
 
 * test-env
 
-*In this section, we’re going to cheat a bit by leveraging [Argo CD Sync Phases and Waves](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/) to ensure that components are deployed in a convenient sequence, helping us reduce friction.*
+*Nesta seção, vamos trapacear um pouco aproveitando [as fases e ondas do Argo CD Sync](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/) para garantir que os componentes sejam implantados em uma sequência conveniente, o que nos ajuda a reduzir o atrito.*
 
-**Localstack and Crossplane**
+**Localstack e Crossplane**
 
-Pretty simple here, we’re just deploying the official helm chart for both tools
+Bem simples aqui, estamos apenas implantando o gráfico oficial do leme para ambas as ferramentas
 
 ```
 	cat <<EOF | kubectl apply -f -
@@ -171,11 +171,11 @@ EOF
 
 ```
 
-**crossplane-providers**
+**provedores de crossplane**
 
-Here’s something a bit different: we’re deploying [Crossplane Providers](https://docs.crossplane.io/latest/concepts/providers/) from manifests placed in a specific path. Our focus is on playing with Crossplane and AWS (through Localstack), so for now, we’re only installing the A[WS provider](https://marketplace.upbound.io/providers/upbound/provider-aws/v0.46.0). However, you can add anything else you need later on.
+Aqui está algo um pouco diferente: estamos implantando [Crossplane Providers](https://docs.crossplane.io/latest/concepts/providers/) a partir de manifestos colocados em um caminho específico. Nosso foco é brincar com Crossplane e AWS (por meio do Localstack), então, por enquanto, estamos instalando apenas o  A[AWS provider](https://marketplace.upbound.io/providers/upbound/provider-aws/v0.46.0). No entanto, você pode adicionar qualquer outra coisa que precisar mais tarde.
 
-Keep in mind that the provider deployment can take a while, depending on your local setup, it will deploy a lot of CRDs.
+Tenha em mente que a implantação do provedor pode demorar um pouco, dependendo da sua configuração local, ele implantará muitos CRDs.
 
 ```
 	cat <<EOF | kubectl apply -f -
@@ -213,13 +213,13 @@ Keep in mind that the provider deployment can take a while, depending on your lo
 EOF
 ```
 
-ℹ️ Note that Crossplane Providers are installed in a second stage after getting ***crossplane*** Application up and running.
+ℹ️ Observe que os provedores Crossplane são instalados em um segundo estágio após o aplicativo ***crossplane*** estar instalado e funcionando.
 
-## **The glue**
+## **O glue**
 
-By now, we have Localstack, Crossplane, and its AWS provider running. The next step is to stitch both together, providing us with the experience of interacting directly with AWS.
+Agora, temos o Localstack, o Crossplane e seu provedor AWS em execução. O próximo passo é unir os dois, nos dando a experiência de interagir diretamente com a AWS.
 
-We have this simple secret that contains a dummy set of credentials
+Temos este secrets simples que contém um conjunto fictício de credenciais
 
 ```
 	cat <<EOF | kubectl apply -f -
@@ -261,20 +261,20 @@ And a [ProviderConfig](https://docs.crossplane.io/latest/concepts/providers/#con
 EOF
 ```
 
-As you can see here, it grabs credentials from the previously defined Secret, and in the endpoint section, it points to our Localstack service.
+Como você pode ver aqui, ele pega credenciais do Segredo definido anteriormente e, na seção de endpoint, aponta para nosso serviço Localstack.
 
-## **Getting everything in motion!**
+## **Colocando tudo em movimento!**
 
-The last moving part here is our “hello world”, managed by the Application called **test-env**.
-Similar to ***crossplane-providers**,* this Application will be searching for Crossplane manifests in a specific path, in this case, **/test-env**
+A última parte móvel aqui é o nosso “hello world”, gerenciado pelo aplicativo chamado  **test-env**.
+Semelhante ao  ***crossplane-providers***,  este aplicativo estará procurando por manifestos Crossplane em um caminho específico, neste caso, **/test-env**
 
-Here, you’ll find a very simple AWS setup: a VPC, three subnets, a security group, and an EC2 instance.
+Aqui, você encontrará uma configuração muito simples da AWS: uma VPC, três sub-redes, um grupo de segurança e uma instância EC2
 
-Now it is time to sync up ***test-env*** Application
+Agora é hora de sincronizar o aplicativo ***test-env***  
 
-✨ At this point, everything comes together, and we can see the true potential of this setup. ✨
+✨ Neste ponto, tudo se encaixa e podemos ver o verdadeiro potencial desta configuração.. ✨
 
-We can use the Argo CD UI to more easily visualize all the resources deployed by Crossplane. With version control in place, we have the flexibility to roll back changes if needed, along with all the cool features of GitOps.
+Podemos usar a Argo CD UI para visualizar mais facilmente todos os recursos implantados pelo Crossplane. Com o controle de versão em vigor, temos a flexibilidade de reverter as alterações, se necessário, junto com todos os recursos interessantes do GitOps.
 
 ![](https://cdn-images-1.medium.com/max/2000/1*cvohOMceyYPA9cJVXkrKaA.png)
 
@@ -282,4 +282,46 @@ We can use the Argo CD UI to more easily visualize all the resources deployed by
 
 ## Conclusion
 
-In summary, our journey through Crossplane, Argo CD, and Localstack showcases a seamless, cost-effective local setup for experimenting with Crossplane and AWS. By leveraging the Argo CD UI and embracing GitOps practices, we highlight the powerful synergy of these tools.
+Em resumo, nossa jornada pelo Crossplane, Argo CD e Localstack mostra uma configuração local perfeita e econômica para experimentar o Crossplane e o AWS. Ao alavancar a IU do Argo CD e adotar as práticas do GitOps, destacamos a poderosa sinergia dessas ferramentas.
+
+## instalando o traefik para ajudar a acessar os endereços do argocd 
+
+```
+helm upgrade --install traefik traefik/traefik -n traefik-v2 --create-namespace\
+  --set dashboard.enabled=true \
+  --set ports.web.port=8000 \
+  --set ports.websecure.port=8443 \
+  --set ports.traefik.port=9000 \
+  --set ports.traefik.expose.default=true \
+  --set service.type=LoadBalancer \
+  --set additionalArguments[0]="--api.dashboard=true" \
+  --set additionalArguments[1]="--api.insecure=true" \
+  --set ingressRoute.dashboard.enabled=true \
+  --set ingressRoute.dashboard.entryPoints[0]=web 
+
+```
+```
+cat <<EOF | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: traefik-dashboard-ingress
+  namespace: traefik-v2
+  annotations:
+    kubernetes.io/ingress.class: traefik    
+    traefik.ingress.kubernetes.io/router.entrypoints: web       
+spec:
+  rules:
+  - host: traefik.localhost
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: traefik
+            port:
+              number: 9000
+EOF
+
+```
