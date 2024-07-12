@@ -39,7 +39,7 @@ Quase esquecemos de configurar nosso repositório git no Argo CD. Supondo que vo
         argocd.argoproj.io/secret-type: repository
     stringData:
       type: git
-      url: https://github.com/leunamnauj/Crossplane-Argocd-and-localstack-for-local-environments.git
+      url: https://github.com/claudm/Crossplane-Argocd-and-localstack-for-local-environments.git
 EOF
 
 ```
@@ -60,7 +60,7 @@ Depois que seu repositório estiver definido, você precisará configurar um apl
     spec:
       project: default
       source:
-        repoURL: https://github.com/leunamnauj/Crossplane-Argocd-and-localstack-for-local-environments.git
+        repoURL: https://github.com/claudm/Crossplane-Argocd-and-localstack-for-local-environments.git
         targetRevision: HEAD
         path: .
     
@@ -196,7 +196,7 @@ Tenha em mente que a implantação do provedor pode demorar um pouco, dependendo
     spec:
       project: default
       source:
-        repoURL: git@github.com:leunamnauj/Crossplane-Argocd-and-localstack-for-local-environments.git
+        repoURL: git@github.com:claudm/Crossplane-Argocd-and-localstack-for-local-environments.git
         targetRevision: HEAD
         path: crossplane-providers
       destination:
@@ -284,45 +284,3 @@ Podemos usar a Argo CD UI para visualizar mais facilmente todos os recursos impl
 ## Conclusion
 
 Em resumo, nossa jornada pelo Crossplane, Argo CD e Localstack mostra uma configuração local perfeita e econômica para experimentar o Crossplane e o AWS. Ao alavancar a IU do Argo CD e adotar as práticas do GitOps, destacamos a poderosa sinergia dessas ferramentas.
-
-## instalando o traefik para ajudar a acessar os endereços do argocd 
-
-```
-helm upgrade --install traefik traefik/traefik -n traefik-v2 --create-namespace\
-  --set dashboard.enabled=true \
-  --set ports.web.port=8000 \
-  --set ports.websecure.port=8443 \
-  --set ports.traefik.port=9000 \
-  --set ports.traefik.expose.default=true \
-  --set service.type=LoadBalancer \
-  --set additionalArguments[0]="--api.dashboard=true" \
-  --set additionalArguments[1]="--api.insecure=true" \
-  --set ingressRoute.dashboard.enabled=true \
-  --set ingressRoute.dashboard.entryPoints[0]=web 
-
-```
-```
-cat <<EOF | kubectl apply -f -
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: traefik-dashboard-ingress
-  namespace: traefik-v2
-  annotations:
-    kubernetes.io/ingress.class: traefik    
-    traefik.ingress.kubernetes.io/router.entrypoints: web       
-spec:
-  rules:
-  - host: traefik.localhost
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: traefik
-            port:
-              number: 9000
-EOF
-
-```
