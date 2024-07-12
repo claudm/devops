@@ -252,7 +252,7 @@ EOF
 ```
 ```
 cat <<EOF | kubectl apply -f -
-apiVersion: aws.upbound.io/v1beta1
+apiVersion: aws.crossplane.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: crossplane-system
