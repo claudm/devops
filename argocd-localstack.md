@@ -21,26 +21,39 @@ Como o rancher é uma das ferramentas mais amplamente utilizadas para clusters l
 
 Usaremos o Argo CD para gerenciar todos os outros componentes de software de agora em diante, mas antes disso, precisamos instalá-lo. A documentação é excelente, uma  [instalação](https://argo-cd.readthedocs.io/en/stable/getting_started/#1-install-argo-cd) vanilla é bem simples e é mais do que suficiente para nosso projeto atual. Apenas certifique-se de pular a versão principal, precisamos da UI.
 
+```
     kubectl create namespace argocd
     kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
+	helm install argocd argo/argo-cd -n argocd --create-namespace \
+  --set server.insecure=true \
+  --set controller.insecure=true \
+  --set repoServer.insecure=true \
+  --set dex.insecure=true
+```
 ✅ **Ah, o repositório!**
 
 Quase esquecemos de configurar nosso repositório git no Argo CD. Supondo que você esteja utilizando um repositório privado para seus testes, você pode seguir as instruções na UI conforme descrito  [aqui](https://argo-cd.readthedocs.io/en/stable/user-guide/private-repositories/). No entanto, para este artigo, usarei meu repositório público:
 
 ```
-	cat <<EOF | kubectl apply -f -
-    apiVersion: v1
-    kind: Secret
-    metadata:
-      name: repo-demo
-      namespace: argocd
-      labels:
-        argocd.argoproj.io/secret-type: repository
-    stringData:
-      type: git
-      url: https://github.com/claudm/Crossplane-Argocd-and-localstack-for-local-environments.git
+SSH_PRIVATE_KEY=$(cat ~/.ssh/id_rsa)
+
+# Cria o arquivo do manifesto usando cat e EOF
+cat <<EOF > k8s-manifest.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: repo-demo
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repo-creds
+stringData:
+  type: git
+  url: ssh://git@github.com/claudm/Crossplane-Argocd-and-localstack-for-local-environments.git
+  sshPrivateKey: |
+    $SSH_PRIVATE_KEY
 EOF
+
 
 ```
 
@@ -135,7 +148,6 @@ EOF
 
 ```
 
-
 ```
 	cat <<EOF | kubectl apply -f -
     apiVersion: argoproj.io/v1alpha1
@@ -155,7 +167,7 @@ EOF
       project: default
       source:
         repoURL: https://charts.crossplane.io/stable 
-        targetRevision: "1.14.5"
+        targetRevision: "1.16.0"
         chart: crossplane  
       destination:
         server: https://kubernetes.default.svc
@@ -196,7 +208,7 @@ Tenha em mente que a implantação do provedor pode demorar um pouco, dependendo
     spec:
       project: default
       source:
-        repoURL: git@github.com:claudm/Crossplane-Argocd-and-localstack-for-local-environments.git
+        repoURL: https://github.com/claudm/Crossplane-Argocd-and-localstack-for-local-environments.git
         targetRevision: HEAD
         path: crossplane-providers
       destination:
@@ -227,7 +239,7 @@ Temos este secrets simples que contém um conjunto fictício de credenciais
     apiVersion: v1
     kind: Secret
     metadata:
-      name: localstack-aws-secret
+      name: aws-secret
       namespace: crossplane-system
       annotations:
         argocd.argoproj.io/hook: Sync
@@ -236,29 +248,48 @@ Temos este secrets simples que contém um conjunto fictício de credenciais
     type: Opaque
     data:
       creds: W2RlZmF1bHRdCmF3c19hY2Nlc3Nfa2V5X2lkID0gdGVzdAphd3Nfc2VjcmV0X2FjY2Vzc19rZXkgPSB0ZXN0Cg==
-	EOF
+EOF
+```
+cat <<EOF | kubectl apply -f -
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: crossplane-system
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: aws-secret
+      key: creds
+EOF
+
+
 And a [ProviderConfig](https://docs.crossplane.io/latest/concepts/providers/#configure-a-provider)
-	cat <<EOF | kubectl apply -f -
-    apiVersion: aws.upbound.io/v1beta1
-    kind: ProviderConfig
-    metadata:
-      name: localstack
-      annotations:
-        argocd.argoproj.io/hook: Sync
-        argocd.argoproj.io/sync-wave: "3"
-        argocd.argoproj.io/hook-delete-policy: HookFailed
-    spec:
-      credentials:
-        source: Secret
-        secretRef:
-          name: localstack-aws-secret
-          namespace: crossplane-system
-          key: creds
-      endpoint:
-        hostnameImmutable: true
-        url:
-          type: Static
-          static: http://localstack.localstack.svc.cluster.local:4566
+
+```
+cat <<EOF | kubectl apply -f -
+apiVersion: aws.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: localstack
+  namespace: crossplane-system
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/hook-delete-policy: HookFailed
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      name: localstack-aws-secret
+      namespace: crossplane-system
+      key: creds
+  endpoint:
+    hostnameImmutable: true
+    url:
+      type: Static
+      static: http://localstack.localstack.svc.cluster.local:4566
 EOF
 ```
 
@@ -284,3 +315,240 @@ Podemos usar a Argo CD UI para visualizar mais facilmente todos os recursos impl
 ## Conclusion
 
 Em resumo, nossa jornada pelo Crossplane, Argo CD e Localstack mostra uma configuração local perfeita e econômica para experimentar o Crossplane e o AWS. Ao alavancar a IU do Argo CD e adotar as práticas do GitOps, destacamos a poderosa sinergia dessas ferramentas.
+
+## instalando o traefik e pebble para ajudar a acessar os endereços do argocd 
+
+
+```
+helm install pebble jupyterhub/pebble --create-namespace \
+  --set pebble.env[0].name=PEBBLE_VA_NOSLEEP \
+  --set pebble.env[0].value="\"1\"" \
+  --set pebble.env[1].name=PEBBLE_WFE_NONCEREJECT \
+  --set pebble.env[1].value="\"0\"" \
+  --set pebble.env[2].name=PEBBLE_AUTHZREUSE \
+  --set pebble.env[2].value="\"100\"" \
+  --set pebble.env[3].name=PEBBLE_VA_ALWAYS_VALID \
+  --set pebble.env[3].value="\"1\"" \
+  --set coredns.enabled=false \
+  -n traefik
+
+
+
+```
+
+```
+
+helm upgrade --install traefik traefik/traefik  -n traefik --create-namespace\
+  --set additionalArguments[0]="--api.dashboard=true" \
+  --set additionalArguments[1]="--api.insecure=true" \
+  --set additionalArguments[2]="--certificatesresolvers.pebble.acme.tlschallenge=true" \
+  --set additionalArguments[3]="--certificatesresolvers.pebble.acme.email=test@hello.com" \
+  --set additionalArguments[4]="--certificatesresolvers.pebble.acme.storage=/data/acme.json" \
+  --set additionalArguments[5]="--certificatesresolvers.pebble.acme.caserver=https://pebble.traefik.svc.cluster.local/dir" \
+  --set volumes[0].name=pebble \
+  --set volumes[0].mountPath="/cacerts" \
+  --set volumes[0].type=configMap \
+  --set env[0].name=LEGO_CA_CERTIFICATES \
+  --set env[0].value="/cacerts/root-cert.pem" \
+  --set dashboard.enabled=true \
+  --set ingressRoute.dashboard.enabled=true \
+  --set ingressRoute.dashboard.entryPoints[0]=web \
+  --set ports.traefik.expose.default=true \
+  --set ports.traefik.port=9000 \
+  --set ports.web.port=8000 \
+  --set ports.websecure.port=8443 \
+  --set service.type=LoadBalancer
+
+
+```
+
+```
+cat <<EOF | kubectl delete -f -
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: traefik-dashboard-ingress
+  namespace: traefik-v2
+  annotations:
+    kubernetes.io/ingress.class: traefik    
+    traefik.ingress.kubernetes.io/router.entrypoints: web       
+spec:
+  rules:
+  - host: traefik.localhost
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: traefik
+            port:
+              number: 9000
+EOF
+
+```
+cat <<EOF | kubectl apply -f -
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(\`argocd.localhost\`)
+      priority: 10
+      services:
+        - name: argocd-server
+          port: 80
+    - kind: Rule
+      match: Host(\`argocd.localhost\`) 
+      priority: 11
+      services:
+        - name: argocd-server
+          port: 80
+          scheme: h2c
+  tls:
+    certResolver: pebble
+
+EOF
+
+cat <<EOF | kubectl apply -f -
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  entryPoints:
+  - websecure  # Assuming Traefik uses this entrypoint for HTTPS
+  routes:
+  - match: Host(\`argocd.localhost\`)
+    kind: Rule
+    priority: 10
+    services:
+    - name: argocd-server
+      port: 443
+      scheme: https
+  - match: Host(\`argocd.localhost\`) 
+    kind: Rule
+    priority: 11
+    services:
+    - name: argocd-server
+      port: 443
+      scheme: h2c  # Use h2c for gRPC traffic
+EOF
+
+cat <<EOF | kubectl apply -f -
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-server
+  namespace: argocd 
+spec:
+  entryPoints:
+    - websecure
+  routes:  
+    - kind: Rule
+      match: Host(\`argocd.localhost\`)   && PathPrefix(\`/argo-cd\`) && Headers(\`Content-Type\`, \`application/grpc\`)
+      priority: 11
+      services:
+        - name: argocd-server
+          port: 443
+		  scheme: h2c          
+  tls:
+    certResolver: pebble
+EOF
+
+
+cat <<EOF | kubectl apply -f -
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-server
+  namespace: argocd
+
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(\`argocd.localhost\`)  
+      priority: 11
+      services:
+        - name: argocd-server
+          port: 443
+          scheme: h2c
+  tls:
+    certResolver: pebble
+EOF
+
+
+cat <<EOF | kubectl apply -f -
+apiVersion:  traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-server-ingress-internal
+  namespace: argocd
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.passthrough: "true"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+  - match: HostSNI(`argocd.localhost)  
+    services:
+    - name: argocd-server 
+      port: 443
+  tls:
+    certResolver: pebble
+EOF
+
+
+
+cat <<EOF | kubectl apply -f -
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: traefik-dashboard-ingress
+  namespace: traefik
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(\`traefik.localhost\`) && PathPrefix(\`/\`)
+      kind: Rule
+      services:
+        - name: traefik
+          port: 9000
+EOF
+
+
+```
+kubectl create namespace testpebble
+kubectl apply -f https://k8s.io/examples/application/deployment.yaml  -n testpebble
+kubectl expose deployment nginx-deployment -n testpebble
+kubectl expose deployment nginx-deployment -n testpebble
+cat <<EOF | kubectl apply -f -
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: nginx-deployment
+  namespace: testpebble
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(\`nginxtls.ua.com\`)
+      kind: Rule
+      services:
+        - name: nginx-deployment
+          port: 80
+  tls:
+    certResolver: pebble
+EOF
+```
